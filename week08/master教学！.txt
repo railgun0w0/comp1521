@@ -1,0 +1,24 @@
+char *s = "abc";
+
+0 1 2 3
+a b c \0
+
+4 bytes
+
+Memory address
+0x1234           -> abc
+
+a stores in 0x1234
+b           0x1238
+c           0x123c
+\0
+
+(char *)*
+
+0x1234 0x23334 0x56666
+abc     123456  anything
+
+char *s = "This is a rabbit"
+char **array = tokenise(s, ' ');
+
+// array = ["This", "is", "a", "rabbit"]

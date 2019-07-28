@@ -39,31 +39,82 @@ int main (int argc, char *argv[])
 	if ((pathp = getenv ("PATH")) == NULL)
 		pathp = DEFAULT_PATH;
 	char **path = tokenise (pathp, ":");
-
+/*
 #ifdef DBUG
 	for (int i = 0; path[i] != NULL; i++)
 		printf ("dir[%d] = %s\n", i, path[i]);
 #endif
-
+*/
 	// main loop: print prompt, read line, execute command
 	char line_[BUFSIZ];
 	printf ("mysh$ ");
 	while (fgets (line_, BUFSIZ, stdin) != NULL) {
-		char *line = trim (line_); // remove leading/trailing space
+		char *line = trim (line_); // remove leading/trailing space---
+		char **command_line = tokenise(line, " ");	// tokenise the command
+		char cwd[BUFSIZ];
 		if (strcmp (line, "exit") == 0) break;
 		if (strcmp (line, "") == 0) { printf ("mysh$ "); continue; }
+		if (strcmp (command_line[0], "cd") == 0) {
+		    
+			if (command_line[1] == NULL) { 
+				chdir(getenv("HOME"));
+				printf ("mysh$ ");
+				continue;
+			}else if(strcmp (command_line[1], "..") == 0){
+			    getcwd(cwd,sizeof(cwd));
+			    int count = 0;
+			    int j = 0;
+			    for(j = 0;cwd[j] != '\0'; j++) {
+			        if(cwd[j] == '/') {
+			            count++;
+			        }
+			    }
+			    j = 0;
+			    int x= 0;
+			    while(j < count){
+			        if(cwd[x] == '/') {
+			            j++;
+			        }
+			        x++;
+			    }
+			    cwd[x-1] = '\0';
+			    if(chdir(cwd) == 0) {
+			    printf ("mysh$ ");
+			    continue;
+			    }
+
+			}else if (chdir(command_line[1]) == 0){
+			    printf ("mysh$ ");
+                continue;
+			}else{
+				printf("error\n");
+				printf ("mysh$ ");
+				continue;
+			}
+		}
+		if (strcmp (line, "pwd") == 0) {
+			getcwd(cwd,sizeof(cwd));
+			printf("%s\n",cwd);
+			printf ("mysh$ ");
+			continue;
+		}
+
 
 		pid_t pid;   // pid of child process
 		int stat;	 // return status of child
-
 		/// TODO: implement the `tokenise, fork, execute, cleanup' code
-
-		printf ("mysh$ ");
+		
+		pid = fork();	// fork
+		if(pid == 0) {
+			execute(command_line, path, environ);		//execute child
+		} else {
+			wait(&stat);
+			freeTokens(command_line); 
+		}
+		printf ("mysh$ ");	
 	}
 	printf ("\n");
-
-	freeTokens (path);
-
+	freeTokens(path);
 	return EXIT_SUCCESS;
 }
 
@@ -71,6 +122,30 @@ int main (int argc, char *argv[])
 static void execute (char **args, char **path, char **envp)
 {
 	/// TODO: implement the `find-the-executable and execve(3) it' code
+	// find-the-executable
+	char *command = NULL;
+	if( args[0][0] == '/' || args[0][0] == '.') { 	// if args[0] starts with '/' or '.':
+		if(isExecutable(args[0]) == 1) {			//  check if the file called args[0] is executable;
+			command = args[0];						//  if so, use args[0] as the command.
+		}
+	} else {
+		for(int i = 0; path[i] != NULL; i++) {
+			char *check = malloc(strlen(args[0]) + strlen(path[i])+1);
+			sprintf(check, "%s/%s", path[i],args[0]);
+			if(isExecutable(check)) {
+				command = check;
+				break;
+			}
+		}
+	}
+	if(command == NULL) {
+		printf("%s: Command Not Found\n", args[0]); //  print a 'command not found' message,
+	} else {
+		printf("Executing: %s\n", command); // print the full name of the command being executed;
+		execve(command, args, envp);	//  use execve() to attempt to run the command with args and envp,
+		perror("Exec failed");		// if it didn't run, print an error,
+	}
+	exit(1);
 }
 
 /// isExecutable: check whether this process can execute a file
