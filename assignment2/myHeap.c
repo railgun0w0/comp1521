@@ -59,6 +59,24 @@ int initHeap (int size)
 	Heap.freeElems = 0;
 
 	/// TODO ///
+	// adjust N so (N%4==0) and at least MIN_HEAP
+	if(size < MIN_HEAP) size = MIN_HEAP;
+	while(size % 4 != 0) {
+		size++;
+	}
+	
+	// allocate a region of memory with N bytes  (heapMem) and set heapMem to be all zeroes
+	// set heapMem to be a single free chunk of size N
+	header *newchunkheader = calloc(size,1);
+	newchunkheader->status = FREE;
+	newchunkheader->size = size;
+	Heap.heapMem = newchunkheader;
+	Heap.heapSize = size;
+	Heap.freeElems = size/MIN_CHUNK;
+	// allocate an array of N/MIN_CHUNK pointers  (freeList)
+	Heap.freeList = calloc(size/MIN_CHUNK,sizeof(Heap.freeList));
+	Heap.nFree = 1;
+	Heap.freeList[0] = newchunkheader;
 
 	return 0; // this just keeps the compiler quiet
 }
@@ -74,7 +92,61 @@ void freeHeap (void)
 void *myMalloc (int size)
 {
 	/// TODO ///
-
+	
+	if (size < 1) return NULL;
+	while(size % 4 != 0) {
+		size++;
+	}
+	int normalsize = size + sizeof(header);
+	int diffsize =  size + sizeof(header) + MIN_CHUNK;
+	int i = 0;
+	int found = 0;
+	int minsize = 0xffffffff;
+	int foundfreesize = 0; 
+	while(i < Heap.freeElems) {
+		header *curr = Heap.freeList[i];
+		if(normalsize < curr->size && curr->size < minsize) {
+			found = 1;
+			minsize = curr->size;
+			foundfreesize = i;	
+		}
+		i++;
+	}
+	if(found = 0) {
+		// Not found free chunk larger than N + HeaderSize
+		printf("cant found free chunk");
+		return NULL;
+	}
+	if(found = 1) {
+		// found free chunk larger than N + HeaderSize
+		// check whether smaller than N + HeaderSize + MIN_CHUNK
+		header *curr = Heap.freeList[foundfreesize];
+		if(curr->size < diffsize) {
+			//allocate the whole chunk
+			curr->status = ALLOC;
+			// move forward the free list
+			int changenum = foundfreesize;
+			while(changenum < Heap.freeElems-1) {
+				Heap.freeList[changenum] = Heap.freeList[changenum+1];
+				changenum++;
+			}
+			Heap.freeList[changenum] = NULL;
+			Heap.freeElems = Heap.freeElems - 1;
+			return curr->data;
+		}else{
+			// split it into two chunks
+			header *lowerchunk = Heap.freeList[foundfreesize];
+			lowerchunk->status = ALLOC;
+			int newsize = lowerchunk->size - normalsize;
+			lowerchunk->size = normalsize;
+			addr addbigchunk = (addr)Heap.freeList[foundfreesize]+normalsize;
+			header *biggerchunk = (header *)addbigchunk;
+			biggerchunk->size = newsize;
+			biggerchunk->status = FREE;
+			Heap.freeList[foundfreesize] = biggerchunk;
+			return lowerchunk->data;
+		}
+	}
 	return NULL; // this just keeps the compiler quiet
 }
 
@@ -82,6 +154,7 @@ void *myMalloc (int size)
 void myFree (void *obj)
 {
 	/// TODO ///
+	
 }
 
 /** Return the first address beyond the range of the heap. */
