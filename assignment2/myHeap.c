@@ -68,6 +68,7 @@ int initHeap (int size)
 	// allocate a region of memory with N bytes  (heapMem) and set heapMem to be all zeroes
 	// set heapMem to be a single free chunk of size N
 	header *newchunkheader = calloc(size,1);
+	if(newchunkheader == NULL) return -1;
 	newchunkheader->status = FREE;
 	newchunkheader->size = size;
 	Heap.heapMem = newchunkheader;
@@ -75,6 +76,7 @@ int initHeap (int size)
 	Heap.freeElems = size/MIN_CHUNK;
 	// allocate an array of N/MIN_CHUNK pointers  (freeList)
 	Heap.freeList = calloc(size/MIN_CHUNK,sizeof(Heap.freeList));
+	if(Heap.freeList == NULL) return -1;
 	Heap.nFree = 1;
 	Heap.freeList[0] = newchunkheader;
 
@@ -103,7 +105,7 @@ void *myMalloc (int size)
 	int found = 0;
 	int minsize = 0xffffffff;
 	int foundfreesize = 0; 
-	while(i < Heap.freeElems) {
+	while(i < Heap.nFree) {
 		header *curr = Heap.freeList[i];
 		if(normalsize < curr->size && curr->size < minsize) {
 			found = 1;
@@ -112,12 +114,12 @@ void *myMalloc (int size)
 		}
 		i++;
 	}
-	if(found = 0) {
+	if(found == 0) {
 		// Not found free chunk larger than N + HeaderSize
 		printf("cant found free chunk");
 		return NULL;
 	}
-	if(found = 1) {
+	if(found == 1) {
 		// found free chunk larger than N + HeaderSize
 		// check whether smaller than N + HeaderSize + MIN_CHUNK
 		header *curr = Heap.freeList[foundfreesize];
@@ -126,12 +128,12 @@ void *myMalloc (int size)
 			curr->status = ALLOC;
 			// move forward the free list
 			int changenum = foundfreesize;
-			while(changenum < Heap.freeElems-1) {
+			while(changenum < Heap.nFree-1) {
 				Heap.freeList[changenum] = Heap.freeList[changenum+1];
 				changenum++;
 			}
 			Heap.freeList[changenum] = NULL;
-			Heap.freeElems = Heap.freeElems - 1;
+			Heap.nFree = Heap.nFree - 1;
 			return curr->data;
 		}else{
 			// split it into two chunks
@@ -154,7 +156,74 @@ void *myMalloc (int size)
 void myFree (void *obj)
 {
 	/// TODO ///
-	
+	//	check obj whether represent an allocated chunk in the heap and
+	// 	an address somewhere in the middle of an allocated block
+	addr headeradd = (addr)obj - sizeof(header);
+	header *freechunk = (header *)headeradd;
+	if(freechunk->status != ALLOC) {
+		printf("Attempt to free unallocated chunk\n");
+		exit(1);
+	}
+	// turns allocated chunk into free chunk (and zeroes it out)
+	freechunk->status = FREE;
+	memset(obj,0,(freechunk->size-sizeof(header)));
+	Heap.nFree++;
+	// add it  to freelist
+	int x = 0;
+	addr freelistx =(addr)Heap.freeList[x];
+	while(freelistx < headeradd && x < Heap.nFree) {
+		x++;
+		freelistx = (addr)Heap.freeList[x];
+	}
+	int poistion = x;
+	int y = Heap.nFree-1;
+	x++;
+	while(x < y) {
+		Heap.freeList[x] = Heap.freeList[x+1];
+		x++;
+	}
+	Heap.freeList[poistion] = freechunk;
+	Heap.freeList[x] = NULL;
+	// check next chunk is free or alloc
+	addr nextheadadd = (addr)obj+ freechunk->size;
+	header *nextchunk = (header *)nextheadadd;
+	if(nextchunk->status == FREE) {
+		freechunk->size = freechunk->size + nextchunk->size;
+		Heap.nFree--;
+		// find next chunk in which freelist
+		int i = 0;
+		while(Heap.freeList[i] != nextchunk) {
+			i++;
+		}
+		int findnext = i;
+		while(findnext < Heap.nFree-1) {
+			Heap.freeList[findnext] = Heap.freeList[findnext+1];
+			findnext++;
+		}
+		Heap.freeList[findnext] = NULL;
+	}
+	// check prev chunk
+	// find prev chunk
+	int j = 0;
+	while(Heap.freeList[j] != freechunk){
+		j++;
+	}
+	header *prevchunk = Heap.freeList[j-1];
+	if(prevchunk->status == FREE) {
+		// check whether connect with this 
+		addr checkchunk = (addr)((addr)prevchunk + (addr)prevchunk->size);
+		header *checknextchunk = (header *)checkchunk;
+		if(checknextchunk == freechunk) {
+			checknextchunk->size = checknextchunk->size + freechunk->size;
+			Heap.nFree--;
+			Heap.freeList[j-1] = checknextchunk;
+			while(j < Heap.nFree - 1) {
+				Heap.freeList[j] = Heap.freeList[j+1];
+				j++;
+			}
+			Heap.freeList[j] = NULL; 
+		}
+	}
 }
 
 /** Return the first address beyond the range of the heap. */
