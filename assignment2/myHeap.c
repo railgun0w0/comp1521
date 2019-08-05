@@ -75,7 +75,7 @@ int initHeap (int size)
 	Heap.heapSize = size;
 	Heap.freeElems = size/MIN_CHUNK;
 	// allocate an array of N/MIN_CHUNK pointers  (freeList)
-	Heap.freeList = calloc(size/MIN_CHUNK,sizeof(Heap.freeList));
+	Heap.freeList = calloc(Heap.freeElems,sizeof(Heap.freeList));
 	if(Heap.freeList == NULL) return -1;
 	Heap.nFree = 1;
 	Heap.freeList[0] = newchunkheader;
@@ -106,7 +106,7 @@ void *myMalloc (int size)
 	int minsize = 0xffffffff;
 	int foundfreesize = 0; 
 	while(i < Heap.nFree) {
-		header *curr = Heap.freeList[i];
+		header *curr =(header *) Heap.freeList[i];
 		if(normalsize < curr->size && curr->size < minsize) {
 			found = 1;
 			minsize = curr->size;
@@ -116,13 +116,13 @@ void *myMalloc (int size)
 	}
 	if(found == 0) {
 		// Not found free chunk larger than N + HeaderSize
-		printf("cant found free chunk");
+		printf("cant found free chunk\n");
 		return NULL;
 	}
 	if(found == 1) {
 		// found free chunk larger than N + HeaderSize
 		// check whether smaller than N + HeaderSize + MIN_CHUNK
-		header *curr = Heap.freeList[foundfreesize];
+		header *curr = (header *) Heap.freeList[foundfreesize];
 		if(curr->size < diffsize) {
 			//allocate the whole chunk
 			curr->status = ALLOC;
@@ -137,11 +137,11 @@ void *myMalloc (int size)
 			return curr->data;
 		}else{
 			// split it into two chunks
-			header *lowerchunk = Heap.freeList[foundfreesize];
+			header *lowerchunk = (header *)Heap.freeList[foundfreesize];
 			lowerchunk->status = ALLOC;
-			int newsize = lowerchunk->size - normalsize;
+			addr newsize = lowerchunk->size - normalsize;
 			lowerchunk->size = normalsize;
-			addr addbigchunk = (addr)Heap.freeList[foundfreesize]+normalsize;
+			addr addbigchunk = (addr)lowerchunk + lowerchunk->size;
 			header *biggerchunk = (header *)addbigchunk;
 			biggerchunk->size = newsize;
 			biggerchunk->status = FREE;
