@@ -167,7 +167,6 @@ void myFree (void *obj)
 	// turns allocated chunk into free chunk (and zeroes it out)
 	freechunk->status = FREE;
 	memset(obj,0,(freechunk->size-sizeof(header)));
-	Heap.nFree++;
 	// add it  to freelist
 	int x = 0;
 	addr freelistx =(addr)Heap.freeList[x];
@@ -176,22 +175,24 @@ void myFree (void *obj)
 		freelistx = (addr)Heap.freeList[x];
 	}
 	int poistion = x;
-	int y = Heap.nFree-1;
-	x++;
+	int y = Heap.nFree;
 	while(x < y) {
-		Heap.freeList[x] = Heap.freeList[x+1];
-		x++;
+		Heap.freeList[y] = Heap.freeList[y - 1];
+		y--;
 	}
 	Heap.freeList[poistion] = freechunk;
-	Heap.freeList[x] = NULL;
+	Heap.nFree++;
+	Heap.freeList[Heap.nFree] = NULL;
+	
 	// check next chunk is free or alloc
-	addr nextheadadd = (addr)obj+ freechunk->size;
+	
+	addr nextheadadd = (addr)obj+ freechunk->size - sizeof(header);  //???
 	header *nextchunk = (header *)nextheadadd;
 	if(nextchunk->status == FREE) {
 		freechunk->size = freechunk->size + nextchunk->size;
 		Heap.nFree--;
 		// find next chunk in which freelist
-		int i = 0;
+		int i = 0; 
 		while(Heap.freeList[i] != nextchunk) {
 			i++;
 		}
@@ -200,7 +201,8 @@ void myFree (void *obj)
 			Heap.freeList[findnext] = Heap.freeList[findnext+1];
 			findnext++;
 		}
-		Heap.freeList[findnext] = NULL;
+		Heap.freeList[findnext] = freechunk;
+		Heap.freeList[Heap.nFree] = NULL;
 	}
 	// check prev chunk
 	// find prev chunk
@@ -208,20 +210,20 @@ void myFree (void *obj)
 	while(Heap.freeList[j] != freechunk){
 		j++;
 	}
-	header *prevchunk = Heap.freeList[j-1];
+	header *prevchunk = (header *)Heap.freeList[j-1];
 	if(prevchunk->status == FREE) {
 		// check whether connect with this 
-		addr checkchunk = (addr)((addr)prevchunk + (addr)prevchunk->size);
+		addr checkchunk = (addr)prevchunk + prevchunk->size;
 		header *checknextchunk = (header *)checkchunk;
 		if(checknextchunk == freechunk) {
 			checknextchunk->size = checknextchunk->size + freechunk->size;
-			Heap.nFree--;
 			Heap.freeList[j-1] = checknextchunk;
 			while(j < Heap.nFree - 1) {
 				Heap.freeList[j] = Heap.freeList[j+1];
 				j++;
 			}
-			Heap.freeList[j] = NULL; 
+			Heap.freeList[j] = NULL;
+			Heap.nFree--; 
 		}
 	}
 }
