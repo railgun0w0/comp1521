@@ -107,7 +107,7 @@ void *myMalloc (int size)
 	int foundfreesize = 0; 
 	while(i < Heap.nFree) {
 		header *curr =(header *) Heap.freeList[i];
-		if(normalsize < curr->size && curr->size < minsize) {
+		if(normalsize <= curr->size && curr->size < minsize) {
 			found = 1;
 			minsize = curr->size;
 			foundfreesize = i;	
@@ -139,7 +139,7 @@ void *myMalloc (int size)
 			// split it into two chunks
 			header *lowerchunk = (header *)Heap.freeList[foundfreesize];
 			lowerchunk->status = ALLOC;
-			addr newsize = lowerchunk->size - normalsize;
+			int newsize = lowerchunk->size - normalsize;
 			lowerchunk->size = normalsize;
 			addr addbigchunk = (addr)lowerchunk + lowerchunk->size;
 			header *biggerchunk = (header *)addbigchunk;
@@ -183,14 +183,13 @@ void myFree (void *obj)
 	Heap.freeList[poistion] = freechunk;
 	Heap.nFree++;
 	Heap.freeList[Heap.nFree] = NULL;
-	
+	 
 	// check next chunk is free or alloc
-	
-	addr nextheadadd = (addr)obj+ freechunk->size - sizeof(header);  //???
+
+	addr nextheadadd = (addr)obj+ freechunk->size - sizeof(header);  
 	header *nextchunk = (header *)nextheadadd;
 	if(nextchunk->status == FREE) {
 		freechunk->size = freechunk->size + nextchunk->size;
-		Heap.nFree--;
 		// find next chunk in which freelist
 		int i = 0; 
 		while(Heap.freeList[i] != nextchunk) {
@@ -201,31 +200,35 @@ void myFree (void *obj)
 			Heap.freeList[findnext] = Heap.freeList[findnext+1];
 			findnext++;
 		}
-		Heap.freeList[findnext] = freechunk;
+		Heap.freeList[i - 1] = freechunk;
+		Heap.nFree--;
 		Heap.freeList[Heap.nFree] = NULL;
 	}
+	
 	// check prev chunk
 	// find prev chunk
 	int j = 0;
 	while(Heap.freeList[j] != freechunk){
 		j++;
 	}
-	header *prevchunk = (header *)Heap.freeList[j-1];
-	if(prevchunk->status == FREE) {
-		// check whether connect with this 
-		addr checkchunk = (addr)prevchunk + prevchunk->size;
-		header *checknextchunk = (header *)checkchunk;
-		if(checknextchunk == freechunk) {
-			checknextchunk->size = checknextchunk->size + freechunk->size;
-			Heap.freeList[j-1] = checknextchunk;
-			while(j < Heap.nFree - 1) {
-				Heap.freeList[j] = Heap.freeList[j+1];
-				j++;
-			}
-			Heap.freeList[j] = NULL;
-			Heap.nFree--; 
-		}
-	}
+	if(j != 0) {
+	    header *prevchunk = (header *)Heap.freeList[j-1];
+	    if(prevchunk->status == FREE) {
+		    // check whether connect with this 
+		    addr checkchunk = (addr)prevchunk + prevchunk->size;
+		    header *checknextchunk = (header *)checkchunk;
+		    if(checknextchunk == freechunk) {
+			    prevchunk->size = prevchunk->size + freechunk->size;
+			    Heap.freeList[j-1] = prevchunk;
+			    while(j < Heap.nFree - 1) {
+				    Heap.freeList[j] = Heap.freeList[j+1];
+				    j++;
+			    }
+			    Heap.freeList[j] = NULL;
+			    Heap.nFree--; 
+		    }
+	    }
+    }
 }
 
 /** Return the first address beyond the range of the heap. */
