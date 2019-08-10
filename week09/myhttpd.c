@@ -17,6 +17,7 @@
 #include <string.h>
 #include <sysexits.h>
 #include <unistd.h>
+#include <time.h>
 
 #define CR   "\r"
 #define LF   "\n"
@@ -45,6 +46,7 @@ static bool handle_connection (
 	int *n_requests, int *n_responses);
 
 static void addr_to_dotted_octets (uint32_t addr, char *buf);
+static char **tokenise (const char *, const char *);
 
 #define PORTUID_BASE 15000
 #define PORTUID_MOD  1000
@@ -101,8 +103,11 @@ static socket_t server_socket_new (in_port_t port, int queue_len)
 	int newsocket = socket(AF_INET, SOCK_STREAM, 0);
 	struct sockaddr_in sockser;
 	sockser.sin_addr.s_addr = INADDR_ANY;
-	
-	return -1;
+	sockser.sin_family = AF_INET;
+	sockser.sin_port = htons(port);
+	bind(newsocket,(struct sockaddr *)&sockser, sizeof(struct sockaddr));
+	listen(newsocket, queue_len);
+	return newsocket;
 }
 
 
@@ -136,12 +141,30 @@ static bool handle_connection (
 	printf ("<--- Request %d:\n%s\n", (*n_requests)++, request);
 
 	/// We always send back this response for any request.
+	char req[BUFSIZ];
+	char name[100];
+	char **args = tokenise(request, " ");
+	if(strcmp(args[0],"GET") == 0){
+		if(strcmp(args[1],"/") == 0) {
+			snprintf(req, BUFSIZ, "<h2>myhttpd running!</h2>\n");
+		}else if (strcmp(args[1],"/hello") == 0){
+			snprintf(req, BUFSIZ, "<h2>Hello!</h2>\n");
+		}else if (strcmp(args[1],"/hello?") == 0 ){
+			sscanf(args[1],"/hello?%s",name);
+			snprintf(req, BUFSIZ, "<h2>Hello, %s!</h2>\n",name);
+		}else if (strcmp(args[1],"/data") == 0){
+			time_t timesage;
+			time(&timesage);
+			snprintf(req, BUFSIZ, "<h2>%s<h2>\n",ctime(&timesage));
+		}else if(strcmp(args[1],"/nonexistent")==0){
+			snprintf(req, BUFSIZ, "<h2>404 Page Not Found<h2>\n");
+		}
+	}
 	char response[BUFSIZ] = {
 		"HTTP/1.0 200 OK" CRLF
 		H_CONTENT_TYPE ": " MIME_PLAIN_UTF8 CRLF
 		H_SERVER ": " SERVER_NAME CRLF
 		CRLF
-		"Surprise!"
 	};
 	size_t response_len = strlen (response);
 
@@ -169,4 +192,28 @@ static void addr_to_dotted_octets (uint32_t addr, char *buf)
 		addr >>  8 & 0xff,
 		addr       & 0xff
 	);
+}
+
+static char **tokenise (const char *str_, const char *sep)
+{
+	char **results  = NULL;
+	size_t nresults = 0;
+
+	// strsep(3) modifies the input string and the pointer to it,
+	// so make a copy and remember where we started.
+	char *str = strdup (str_);
+	char *tmp = str;
+
+	char *tok;
+	while ((tok = strsep (&str, sep)) != NULL) {
+		// "push" this token onto the list of resulting strings
+		results = realloc (results, ++nresults * sizeof (char *));
+		results[nresults - 1] = strdup (tok);
+	}
+
+	results = realloc (results, ++nresults * sizeof (char *));
+	results[nresults - 1] = NULL;
+
+	free (tmp);
+	return results;
 }
