@@ -149,19 +149,18 @@ static bool handle_connection (
 			snprintf(req, BUFSIZ, "<h2>myhttpd running!</h2>\n");
 		}else if (strcmp(args[1],"/hello") == 0){
 			snprintf(req, BUFSIZ, "<h2>Hello!</h2>\n");
-		}else if(strcmp(args[1],"/nonexistent")==0){
-			snprintf(req, BUFSIZ, "<h2>404 Page Not Found</h2>\n");
-		}else if (strcmp(args[1],"/date") == 0){
+		}}else if (strcmp(args[1],"/date") == 0){
 			time_t timesage;
 			time(&timesage);
 			char *tmp = ctime(&timesage);
 			int len = strlen(tmp);
 			tmp[len - 1] = '\0';
-			
 			snprintf(req, BUFSIZ, "<h2>%s</h2>\n",tmp);
 		}else if (strncmp(args[1],"/hello?",7) == 0){
 			sscanf(args[1],"/hello?%s",name);
 			snprintf(req, BUFSIZ, "<h2>Hello, %s!</h2>\n",name);
+		}else{
+			snprintf(req, BUFSIZ, "<h2>404 Page Not Found</h2>\n");
 		}
 	}
 	char response[BUFSIZ];
