@@ -141,7 +141,7 @@ static bool handle_connection (
 	printf ("<--- Request %d:\n%s\n", (*n_requests)++, request);
 
 	/// We always send back this response for any request.
-	char req[BUFSIZ];
+	char req[BUFSIZ] = "";
 	char name[100];
 	char **args = tokenise(request, " ");
 	if(strcmp(args[0],"GET") == 0){
@@ -149,23 +149,29 @@ static bool handle_connection (
 			snprintf(req, BUFSIZ, "<h2>myhttpd running!</h2>\n");
 		}else if (strcmp(args[1],"/hello") == 0){
 			snprintf(req, BUFSIZ, "<h2>Hello!</h2>\n");
-		}else if (strcmp(args[1],"/hello?") == 0 ){
-			sscanf(args[1],"/hello?%s",name);
-			snprintf(req, BUFSIZ, "<h2>Hello, %s!</h2>\n",name);
-		}else if (strcmp(args[1],"/data") == 0){
+		}else if(strcmp(args[1],"/nonexistent")==0){
+			snprintf(req, BUFSIZ, "<h2>404 Page Not Found</h2>\n");
+		}else if (strcmp(args[1],"/date") == 0){
 			time_t timesage;
 			time(&timesage);
-			snprintf(req, BUFSIZ, "<h2>%s<h2>\n",ctime(&timesage));
-		}else if(strcmp(args[1],"/nonexistent")==0){
-			snprintf(req, BUFSIZ, "<h2>404 Page Not Found<h2>\n");
+			char *tmp = ctime(&timesage);
+			int len = strlen(tmp);
+			tmp[len - 1] = '\0';
+			
+			snprintf(req, BUFSIZ, "<h2>%s</h2>\n",tmp);
+		}else if (strncmp(args[1],"/hello?",7) == 0){
+			sscanf(args[1],"/hello?%s",name);
+			snprintf(req, BUFSIZ, "<h2>Hello, %s!</h2>\n",name);
 		}
 	}
-	char response[BUFSIZ] = {
+	char response[BUFSIZ];
+	char *req_a = {
 		"HTTP/1.0 200 OK" CRLF
 		H_CONTENT_TYPE ": " MIME_PLAIN_UTF8 CRLF
 		H_SERVER ": " SERVER_NAME CRLF
 		CRLF
 	};
+	snprintf(response, BUFSIZ, "%s%s",req_a, req);
 	size_t response_len = strlen (response);
 
 	printf ("---> Response %d:\n%s\n", (*n_responses)++, response);
