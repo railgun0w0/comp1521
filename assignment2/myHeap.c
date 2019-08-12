@@ -160,7 +160,7 @@ void myFree (void *obj)
 	// 	an address somewhere in the middle of an allocated block
 	addr headeradd = (addr)obj - sizeof(header);
 	header *freechunk = (header *)headeradd;
-	if(freechunk->status != ALLOC) {
+	if(obj == NULL || freechunk->status != ALLOC || freechunk == NULL) {
 		printf("Attempt to free unallocated chunk\n");
 		exit(1);
 	}
