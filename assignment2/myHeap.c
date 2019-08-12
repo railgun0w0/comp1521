@@ -1,5 +1,6 @@
 // COMP1521 19t2 ... Assignment 2: heap management system
-
+// Made by Yanghaoyu (z5223796)
+// finish 8/13
 #include <assert.h>
 #include <stdint.h>
 #include <stdio.h>
@@ -58,7 +59,6 @@ int initHeap (int size)
 	Heap.nFree = 0;
 	Heap.freeElems = 0;
 
-	/// TODO ///
 	// adjust N so (N%4==0) and at least MIN_HEAP
 	if(size < MIN_HEAP) size = MIN_HEAP;
 	while(size % 4 != 0) {
@@ -78,6 +78,7 @@ int initHeap (int size)
 	Heap.freeList = calloc(Heap.freeElems,sizeof(Heap.freeList));
 	if(Heap.freeList == NULL) return -1;
 	Heap.nFree = 1;
+	// make this chunk the only entry in freeList[]
 	Heap.freeList[0] = newchunkheader;
 
 	return 0; // this just keeps the compiler quiet
@@ -93,8 +94,7 @@ void freeHeap (void)
 /** Allocate a chunk of memory large enough to store `size' bytes. */
 void *myMalloc (int size)
 {
-	/// TODO ///
-	
+	// Make size can be use
 	if (size < 1) return NULL;
 	while(size % 4 != 0) {
 		size++;
@@ -105,6 +105,8 @@ void *myMalloc (int size)
 	int found = 0;
 	int minsize = 0xffffffff;
 	int foundfreesize = 0; 
+	// Find the smallest free chunk 
+	// scan freeList to find best-fit free chunk
 	while(i < Heap.nFree) {
 		header *curr =(header *) Heap.freeList[i];
 		if(normalsize <= curr->size && curr->size < minsize) {
@@ -133,10 +135,11 @@ void *myMalloc (int size)
 				changenum++;
 			}
 			Heap.freeList[changenum] = NULL;
-			Heap.nFree = Heap.nFree - 1;
+			Heap.nFree--;
 			return curr->data;
 		}else{
 			// split it into two chunks
+			// convert it to an allocated chunk
 			header *lowerchunk = (header *)Heap.freeList[foundfreesize];
 			lowerchunk->status = ALLOC;
 			int newsize = lowerchunk->size - normalsize;
@@ -155,7 +158,6 @@ void *myMalloc (int size)
 /** Deallocate a chunk of memory. */
 void myFree (void *obj)
 {
-	/// TODO ///
 	//	check obj whether represent an allocated chunk in the heap and
 	// 	an address somewhere in the middle of an allocated block
 	addr headeradd = (addr)obj - sizeof(header);
@@ -183,9 +185,9 @@ void myFree (void *obj)
 	Heap.freeList[poistion] = freechunk;
 	Heap.nFree++;
 	Heap.freeList[Heap.nFree] = NULL;
-	 
+	// if adjacent chunks are free, merge into single large free chunk 
 	// check next chunk is free or alloc
-
+	
 	addr nextheadadd = (addr)obj+ freechunk->size - sizeof(header);  
 	header *nextchunk = (header *)nextheadadd;
 	if(nextchunk->status == FREE) {
@@ -214,7 +216,7 @@ void myFree (void *obj)
 	if(j != 0) {
 	    header *prevchunk = (header *)Heap.freeList[j-1];
 	    if(prevchunk->status == FREE) {
-		    // check whether connect with this 
+		    // check whether connect with this freechunk
 		    addr checkchunk = (addr)prevchunk + prevchunk->size;
 		    header *checknextchunk = (header *)checkchunk;
 		    if(checknextchunk == freechunk) {
