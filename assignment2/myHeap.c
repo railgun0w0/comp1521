@@ -60,15 +60,15 @@ int initHeap (int size)
 	Heap.freeElems = 0;
 
 	// adjust N so (N%4==0) and at least MIN_HEAP
-	if(size < MIN_HEAP) size = MIN_HEAP;
-	while(size % 4 != 0) {
+	if (size < MIN_HEAP) size = MIN_HEAP;
+	while (size % 4 != 0) {
 		size++;
 	}
 	
 	// allocate a region of memory with N bytes  (heapMem) and set heapMem to be all zeroes
 	// set heapMem to be a single free chunk of size N
 	header *newchunkheader = calloc(size,1);
-	if(newchunkheader == NULL) return -1;
+	if (newchunkheader == NULL) return -1;
 	newchunkheader->status = FREE;
 	newchunkheader->size = size;
 	Heap.heapMem = newchunkheader;
@@ -76,7 +76,7 @@ int initHeap (int size)
 	Heap.freeElems = size/MIN_CHUNK;
 	// allocate an array of N/MIN_CHUNK pointers  (freeList)
 	Heap.freeList = calloc(Heap.freeElems,sizeof(Heap.freeList));
-	if(Heap.freeList == NULL) return -1;
+	if (Heap.freeList == NULL) return -1;
 	Heap.nFree = 1;
 	// make this chunk the only entry in freeList[]
 	Heap.freeList[0] = newchunkheader;
@@ -96,7 +96,7 @@ void *myMalloc (int size)
 {
 	// Make size can be use
 	if (size < 1) return NULL;
-	while(size % 4 != 0) {
+	while (size % 4 != 0) {
 		size++;
 	}
 	int normalsize = size + sizeof(header);
@@ -107,7 +107,7 @@ void *myMalloc (int size)
 	int foundfreesize = 0; 
 	// Find the smallest free chunk 
 	// scan freeList to find best-fit free chunk
-	while(i < Heap.nFree) {
+	while (i < Heap.nFree) {
 		header *curr =(header *) Heap.freeList[i];
 		if(normalsize <= curr->size && curr->size < minsize) {
 			found = 1;
@@ -116,21 +116,21 @@ void *myMalloc (int size)
 		}
 		i++;
 	}
-	if(found == 0) {
+	if (found == 0) {
 		// Not found free chunk larger than N + HeaderSize
 		printf("cant found free chunk\n");
 		return NULL;
 	}
-	if(found == 1) {
+	if (found == 1) {
 		// found free chunk larger than N + HeaderSize
 		// check whether smaller than N + HeaderSize + MIN_CHUNK
 		header *curr = (header *) Heap.freeList[foundfreesize];
-		if(curr->size < diffsize) {
+		if (curr->size < diffsize) {
 			//allocate the whole chunk
 			curr->status = ALLOC;
 			// move forward the free list
 			int changenum = foundfreesize;
-			while(changenum < Heap.nFree-1) {
+			while (changenum < Heap.nFree-1) {
 				Heap.freeList[changenum] = Heap.freeList[changenum+1];
 				changenum++;
 			}
@@ -160,25 +160,26 @@ void myFree (void *obj)
 {
 	//	check obj whether represent an allocated chunk in the heap and
 	// 	an address somewhere in the middle of an allocated block
+	//  Add freechunk into freelist then check whether free chunk connect
 	addr headeradd = (addr)obj - sizeof(header);
 	header *freechunk = (header *)headeradd;
-	if(obj == NULL || freechunk->status != ALLOC || freechunk == NULL) {
+	if (obj == NULL || freechunk->status != ALLOC || freechunk == NULL) {
 		printf("Attempt to free unallocated chunk\n");
 		exit(1);
 	}
 	// turns allocated chunk into free chunk (and zeroes it out)
 	freechunk->status = FREE;
-	memset(obj,0,(freechunk->size-sizeof(header)));
+	memset (obj,0,(freechunk->size-sizeof(header)));
 	// add it  to freelist
 	int x = 0;
 	addr freelistx =(addr)Heap.freeList[x];
-	while(freelistx < headeradd && x < Heap.nFree) {
+	while (freelistx < headeradd && x < Heap.nFree) {
 		x++;
 		freelistx = (addr)Heap.freeList[x];
 	}
 	int poistion = x;
 	int y = Heap.nFree;
-	while(x < y) {
+	while (x < y) {
 		Heap.freeList[y] = Heap.freeList[y - 1];
 		y--;
 	}
@@ -190,7 +191,7 @@ void myFree (void *obj)
 	
 	addr nextheadadd = (addr)obj+ freechunk->size - sizeof(header);  
 	header *nextchunk = (header *)nextheadadd;
-	if(nextchunk->status == FREE) {
+	if (nextchunk->status == FREE) {
 		freechunk->size = freechunk->size + nextchunk->size;
 		// find next chunk in which freelist
 		int i = 0; 
@@ -210,19 +211,19 @@ void myFree (void *obj)
 	// check prev chunk
 	// find prev chunk
 	int j = 0;
-	while(Heap.freeList[j] != freechunk){
+	while (Heap.freeList[j] != freechunk){
 		j++;
 	}
-	if(j != 0) {
+	if (j != 0) {
 	    header *prevchunk = (header *)Heap.freeList[j-1];
-	    if(prevchunk->status == FREE) {
+	    if (prevchunk->status == FREE) {
 		    // check whether connect with this freechunk
 		    addr checkchunk = (addr)prevchunk + prevchunk->size;
 		    header *checknextchunk = (header *)checkchunk;
 		    if(checknextchunk == freechunk) {
 			    prevchunk->size = prevchunk->size + freechunk->size;
 			    Heap.freeList[j-1] = prevchunk;
-			    while(j < Heap.nFree - 1) {
+			    while (j < Heap.nFree - 1) {
 				    Heap.freeList[j] = Heap.freeList[j+1];
 				    j++;
 			    }
